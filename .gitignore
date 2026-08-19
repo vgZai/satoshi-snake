@@ -1,0 +1,16 @@
+# Secrets & Environment Variables - NEVER COMMIT
+.env
+.env.*
+*.secret
+*.key
+*nsec*
+*npub.txt
+credentials*
+*.pem
+
+# Operating System & Editor Clutter
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

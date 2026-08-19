@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Satoshi Snake ⚡ Bitcoin Vibe Camp</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --card-bg: #121824;
+      --btc-orange: #f7931a;
+      --neon-cyan: #00f0ff;
+      --neon-green: #00ff88;
+      --neon-red: #ff3366;
+      --neon-purple: #b026ff;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 12px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(247, 147, 26, 0.3);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(247, 147, 26, 0.1);
+    }
+
+    .title-group h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(135deg, #f7931a, #ffd700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .title-group p {
+      font-size: 0.72rem;
+      color: var(--neon-cyan);
+      letter-spacing: 0.5px;
+      font-family: monospace;
+    }
+
+    .stats {
+      display: flex;
+      gap: 14px;
+      text-align: right;
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: monospace;
+    }
+
+    #score-display {
+      color: var(--btc-orange);
+      text-shadow: 0 0 8px rgba(247, 147, 26, 0.6);
+    }
+
+    #high-display {
+      color: var(--neon-green);
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #06090e;
+      border-radius: 14px;
+      border: 2px solid rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(11, 14, 20, 0.92);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 18px;
+      text-align: center;
+      transition: opacity 0.2s ease;
+      z-index: 10;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .overlay h2 {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .game-over-title {
+      color: var(--neon-red);
+      text-shadow: 0 0 12px rgba(255, 51, 102, 0.6);
+    }
+
+    .start-title {
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .overlay p {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      max-width: 330px;
+      line-height: 1.35;
+    }
+
+    .player-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      max-width: 270px;
+      align-items: center;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .player-name-input {
+      flex: 1;
+      background: rgba(18, 24, 36, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      color: #fff;
+      font-family: monospace;
+      font-size: 0.95rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      text-align: center;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .player-name-input:focus {
+      border-color: var(--btc-orange);
+      box-shadow: 0 0 12px rgba(247, 147, 26, 0.4);
+    }
+
+    .nostr-btn {
+      background: rgba(176, 38, 255, 0.15);
+      border: 1px solid rgba(176, 38, 255, 0.5);
+      color: #d8b4fe;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .nostr-btn:hover {
+      background: rgba(176, 38, 255, 0.3);
+      transform: scale(1.02);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--btc-orange), #ffaa33);
+      color: #000;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 10px 24px;
+      border-radius: 30px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(247, 147, 26, 0.5);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      transform: scale(1.04);
+      box-shadow: 0 0 22px rgba(247, 147, 26, 0.8);
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .action-btn-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-secondary {
+      background: rgba(176, 38, 255, 0.2);
+      border: 1px solid rgba(176, 38, 255, 0.6);
+      color: #e9d5ff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 9px 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(176, 38, 255, 0.3);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(176, 38, 255, 0.4);
+      box-shadow: 0 0 18px rgba(176, 38, 255, 0.6);
+      transform: scale(1.03);
+    }
+
+    .btn-zap {
+      background: linear-gradient(135deg, #f7931a, #ffd700);
+      border: 1px solid #ffd700;
+      color: #000;
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 9px 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(247, 147, 26, 0.4);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-zap:hover {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.7);
+      transform: scale(1.03);
+    }
+
+    .zap-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .zap-modal.hidden {
+      display: none;
+    }
+
+    .zap-modal-content {
+      background: #121824;
+      border: 1px solid var(--btc-orange);
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 320px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 0 30px rgba(247, 147, 26, 0.3);
+      text-align: center;
+    }
+
+    .zap-modal-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .zap-modal-header h3 {
+      font-size: 1.05rem;
+      color: #ffd700;
+      letter-spacing: 0.5px;
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .close-modal-btn:hover {
+      color: #fff;
+    }
+
+    .zap-qr-wrap {
+      background: #fff;
+      padding: 8px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(247, 147, 26, 0.4);
+    }
+
+    .zap-qr-wrap img {
+      width: 180px;
+      height: 180px;
+      display: block;
+    }
+
+    .zap-instruction {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .zap-invoice-box {
+      display: flex;
+      width: 100%;
+      gap: 6px;
+    }
+
+    .zap-invoice-box input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(247, 147, 26, 0.3);
+      color: #fff;
+      font-family: monospace;
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .btn-copy {
+      background: var(--btc-orange);
+      color: #000;
+      font-weight: bold;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .btn-open-wallet {
+      width: 100%;
+      background: linear-gradient(135deg, #f7931a, #ffd700);
+      color: #000;
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-decoration: none;
+      padding: 8px;
+      border-radius: 20px;
+      display: block;
+    }
+
+    .nostr-status-msg {
+      font-size: 0.72rem;
+      font-family: monospace;
+      color: var(--neon-cyan);
+      min-height: 1.2em;
+    }
+
+    .status-indicator {
+      font-size: 0.78rem;
+      font-family: monospace;
+      color: var(--neon-cyan);
+      min-height: 1.2em;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .legend {
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      background: var(--card-bg);
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Leaderboard Card */
+    .leaderboard-card {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .leaderboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 6px;
+    }
+
+    .leaderboard-header h3 {
+      font-size: 0.82rem;
+      color: var(--neon-cyan);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .leaderboard-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      font-family: monospace;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .leaderboard-item.rank-1 { color: #ffd700; font-weight: bold; background: rgba(255, 215, 0, 0.08); }
+    .leaderboard-item.rank-2 { color: #c0c0c0; }
+    .leaderboard-item.rank-3 { color: #cd7f32; }
+
+    .leaderboard-player {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 260px;
+    }
+
+    .leaderboard-rank {
+      color: var(--muted);
+      width: 18px;
+      flex-shrink: 0;
+    }
+
+    .leaderboard-score {
+      color: var(--btc-orange);
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 8px;
+      width: 220px;
+      margin-top: 2px;
+    }
+
+    .ctrl-btn {
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      color: var(--neon-cyan);
+      font-size: 1.25rem;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      transition: background 0.1s, transform 0.05s;
+    }
+
+    .ctrl-btn:active {
+      background: rgba(0, 240, 255, 0.2);
+      transform: scale(0.92);
+    }
+
+    .ctrl-up { grid-column: 2; grid-row: 1; }
+    .ctrl-left { grid-column: 1; grid-row: 2; }
+    .ctrl-down { grid-column: 2; grid-row: 2; }
+    .ctrl-right { grid-column: 3; grid-row: 2; }
+
+    footer {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    footer a {
+      color: var(--btc-orange);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>₿ SATOSHI SNAKE</h1>
+        <p>HACKER @ BITCOIN VIBE CAMP</p>
+      </div>
+      <div class="stats">
+        <div class="stat-box">
+          <span class="stat-label">Sats Stacked</span>
+          <span class="stat-value" id="score-display">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">High Score</span>
+          <span class="stat-value" id="high-display">0</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="canvas-wrapper">
+      <canvas id="gameCanvas" width="400" height="400"></canvas>
+      
+      <!-- Start / Game Over Overlay -->
+      <div id="overlay" class="overlay">
+        <h2 id="overlay-title" class="start-title">STACK SATS & SURVIVE</h2>
+        <p id="overlay-desc">Guide your node gently, stack Bitcoin blocks, and grab ❄️ Time-Lock Freeze and ⛏️ Mini-Halvings!</p>
+        
+        <div id="input-container" class="player-input-wrap">
+          <div class="input-row">
+            <input type="text" id="player-name" class="player-name-input" maxlength="20" placeholder="Hacker Handle (Anon)" autocomplete="off" spellcheck="false">
+            <button id="nostr-connect-btn" class="nostr-btn" title="Auto-fill with your Nostr NIP-07 signer">🟣 Nostr</button>
+          </div>
+        </div>
+
+        <div id="nostr-status" class="nostr-status-msg"></div>
+
+        <div class="action-btn-group">
+          <button id="start-btn" class="btn">⚡ START MINING</button>
+          <button id="share-nostr-btn" class="btn-secondary" style="display:none;">🟣 Share to Nostr</button>
+          <button id="zap-creator-btn" class="btn-zap" style="display:none;">⚡ Zap Creator (21 Sats)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zap Invoice / QR Modal -->
+    <div id="zap-modal" class="zap-modal hidden">
+      <div class="zap-modal-content">
+        <div class="zap-modal-header">
+          <h3>⚡ Zap Creator (21 Sats)</h3>
+          <button id="close-zap-modal" class="close-modal-btn">✕</button>
+        </div>
+        <div id="zap-qr-container" class="zap-qr-wrap">
+          <img id="zap-qr-img" src="" alt="Lightning Invoice QR">
+        </div>
+        <p class="zap-instruction">Scan with any Lightning wallet (Alby, Phoenix, Zeus, Primal, CashApp):</p>
+        <div class="zap-invoice-box">
+          <input type="text" id="zap-invoice-text" readonly>
+          <button id="copy-invoice-btn" class="btn-copy">📋 Copy</button>
+        </div>
+        <a id="open-wallet-btn" href="#" class="btn-open-wallet">⚡ Pay in Wallet</a>
+      </div>
+    </div>
+
+    <div id="status-bar" class="status-indicator"></div>
+
+    <div class="legend">
+      <div class="legend-item">🟡 <span>+5 Sats</span></div>
+      <div class="legend-item">❄️ <span>Time-Lock (Slow-Mo)</span></div>
+      <div class="legend-item">⛏️ <span>Mini-Halving (+15)</span></div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="leaderboard-card">
+      <div class="leaderboard-header">
+        <h3>🏆 LEADERBOARD</h3>
+        <span id="player-tag-preview" style="font-size: 0.7rem; color: var(--muted); font-family: monospace;"></span>
+      </div>
+      <ul id="leaderboard-list" class="leaderboard-list">
+        <!-- Rendered via JS -->
+      </ul>
+    </div>
+
+    <!-- Mobile Onscreen D-Pad -->
+    <div class="controls">
+      <div class="ctrl-btn ctrl-up" id="btn-up">▲</div>
+      <div class="ctrl-btn ctrl-left" id="btn-left">◀</div>
+      <div class="ctrl-btn ctrl-down" id="btn-down">▼</div>
+      <div class="ctrl-btn ctrl-right" id="btn-right">▶</div>
+    </div>
+
+    <footer>
+      <span>Built by <strong>Vitali</strong></span> • 
+      <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
+    </footer>
+  </div>
+
+  <script>
+    // --- Nostr Protocol Relays & Helpers ---
+    const NOSTR_RELAYS = [
+      'wss://main.relay.gamestr.io',
+      'wss://test.relay.gamestr.io',
+      'wss://relay.damus.io',
+      'wss://relay.primal.net',
+      'wss://nos.lol'
+    ];
+
+    let userPubkeyHex = localStorage.getItem('satoshi_nostr_pubkey') || '';
+
+    // Convert hex to bech32 npub shorthand for UI display
+    function shortenPubkey(hex) {
+      if (!hex || hex.length < 10) return hex;
+      return 'npub...' + hex.slice(-4);
+    }
+
+    // Fetch Nostr Profile (Kind 0) to resolve NIP-05, Name, and Lightning Address
+    async function fetchNostrProfile(pubkeyHex) {
+      if (!pubkeyHex) return null;
+      const subId = 'prof_' + Math.random().toString(36).substring(2, 8);
+      const reqMsg = JSON.stringify(['REQ', subId, { kinds: [0], authors: [pubkeyHex], limit: 1 }]);
+
+      const promises = NOSTR_RELAYS.map(relayUrl => {
+        return new Promise((resolve) => {
+          try {
+            const ws = new WebSocket(relayUrl);
+            const timer = setTimeout(() => {
+              try { ws.close(); } catch(e){}
+              resolve(null);
+            }, 2500);
+
+            ws.onopen = () => {
+              ws.send(reqMsg);
+            };
+
+            ws.onmessage = (msg) => {
+              try {
+                const data = JSON.parse(msg.data);
+                if (data[0] === 'EVENT' && data[1] === subId && data[2]?.kind === 0) {
+                  const profile = JSON.parse(data[2].content);
+                  clearTimeout(timer);
+                  try { ws.send(JSON.stringify(['CLOSE', subId])); ws.close(); } catch(e){}
+                  resolve(profile);
+                } else if (data[0] === 'EOSE') {
+                  clearTimeout(timer);
+                  try { ws.close(); } catch(e){}
+                  resolve(null);
+                }
+              } catch(e) {}
+            };
+
+            ws.onerror = () => { clearTimeout(timer); resolve(null); };
+          } catch(e) { resolve(null); }
+        });
+      });
+
+      const results = await Promise.all(promises);
+      return results.find(p => p !== null) || null;
+    }
+
+    // Connect to Nostr NIP-07 Browser Extension
+    async function connectNostr() {
+      const statusEl = document.getElementById('nostr-status');
+      if (!window.nostr) {
+        statusEl.textContent = '⚠️ No Nostr extension (Alby / nos2x) detected!';
+        statusEl.style.color = 'var(--neon-red)';
+        setTimeout(() => { if (statusEl.textContent.includes('No Nostr')) statusEl.textContent = ''; }, 4000);
+        return;
+      }
+
+      try {
+        statusEl.textContent = '⏳ Requesting public key & fetching profile...';
+        statusEl.style.color = 'var(--neon-cyan)';
+        const pubkey = await window.nostr.getPublicKey();
+        userPubkeyHex = pubkey;
+        localStorage.setItem('satoshi_nostr_pubkey', pubkey);
+
+        let chosenHandle = shortenPubkey(pubkey);
+        let statusDisplay = chosenHandle;
+
+        try {
+          const profile = await fetchNostrProfile(pubkey);
+          if (profile) {
+            if (profile.nip05) {
+              chosenHandle = profile.nip05;
+              statusDisplay = `${profile.nip05} ${profile.name || profile.display_name ? `(${profile.name || profile.display_name})` : ''}`.trim();
+            } else if (profile.name || profile.display_name) {
+              chosenHandle = profile.name || profile.display_name;
+              statusDisplay = chosenHandle;
+            }
+          }
+        } catch(e) {}
+
+        playerNameInput.value = chosenHandle;
+        localStorage.setItem('satoshi_player_name', chosenHandle);
+
+        statusEl.textContent = `✅ Connected: ${statusDisplay}`;
+        statusEl.style.color = 'var(--neon-green)';
+        setTimeout(() => { statusEl.textContent = ''; }, 3500);
+      } catch (err) {
+        statusEl.textContent = '❌ Nostr login rejected or cancelled.';
+        statusEl.style.color = 'var(--neon-red)';
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+      }
+    }
+
+    // Broadcast Score Events (Kind 30762 Gamestr Score + Kind 1 Note) to Nostr Relays
+    async function broadcastScoreToNostr(finalScore) {
+      const statusEl = document.getElementById('nostr-status');
+      const shareBtn = document.getElementById('share-nostr-btn');
+
+      if (!window.nostr) {
+        statusEl.textContent = '⚠️ Install a Nostr extension (Alby/nos2x) to post!';
+        statusEl.style.color = 'var(--neon-red)';
+        return;
+      }
+
+      try {
+        shareBtn.disabled = true;
+        statusEl.textContent = '⏳ Preparing and signing Nostr event...';
+        statusEl.style.color = 'var(--neon-cyan)';
+
+        const pubkey = userPubkeyHex || await window.nostr.getPublicKey();
+        userPubkeyHex = pubkey;
+
+        const handle = playerNameInput.value.trim() || 'Anon';
+        const gameUrl = 'https://bitcoinvibe.camp/x/hackers/vitali/index.html';
+        const nowSec = Math.floor(Date.now() / 1000);
+
+        // 1. Kind 30762 (Gamestr Score Event - for the Olympics Leaderboard & Scores Feed)
+        const gamestrEvent = {
+          kind: 30762,
+          created_at: nowSec,
+          tags: [
+            ['d', 'satoshisnake'],
+            ['game', 'Satoshi Snake'],
+            ['score', String(finalScore)],
+            ['unit', 'sats'],
+            ['t', 'bitcoin-vibecamp-olympics-2026'],
+            ['t', 'bitcoin-vibecamp'],
+            ['t', 'vibecamp'],
+            ['t', 'satoshisnake'],
+            ['r', gameUrl]
+          ],
+          content: `🐍 Stacked ${finalScore} Sats on Satoshi Snake! ⚡ Player: ${handle}`,
+          pubkey: pubkey
+        };
+
+        // 2. Kind 1 (Public Social Note)
+        const noteContent = `🐍 Stacked ${finalScore} Sats on Satoshi Snake at Bitcoinvibecamp! ⚡\n\nPlayer: ${handle}\nPlay here: ${gameUrl}\n\n#bitcoinvibecamp #bitcoinvibecampolympics2026 #Prospera #nostr #satoshisnake`;
+        const noteEvent = {
+          kind: 1,
+          created_at: nowSec,
+          tags: [
+            ['t', 'bitcoin-vibecamp-olympics-2026'],
+            ['t', 'bitcoin-vibecamp'],
+            ['t', 'Prospera'],
+            ['t', 'nostr'],
+            ['t', 'satoshisnake'],
+            ['r', gameUrl]
+          ],
+          content: noteContent,
+          pubkey: pubkey
+        };
+
+        // Request signatures from NIP-07 extension
+        statusEl.textContent = '⏳ Requesting signature in extension...';
+        const signedGamestr = await window.nostr.signEvent(gamestrEvent);
+        
+        let signedNote = null;
+        try {
+          signedNote = await window.nostr.signEvent(noteEvent);
+        } catch (e) {
+          // If user only approves the first prompt, continue with score
+        }
+
+        statusEl.textContent = '🚀 Broadcasting score to Gamestr & Nostr relays...';
+
+        const sendToRelay = (relayUrl, event) => {
+          return new Promise((resolve) => {
+            try {
+              const ws = new WebSocket(relayUrl);
+              const timer = setTimeout(() => { try { ws.close(); } catch(e){} resolve(false); }, 4000);
+
+              ws.onopen = () => {
+                ws.send(JSON.stringify(['EVENT', event]));
+              };
+
+              ws.onmessage = (msg) => {
+                try {
+                  const data = JSON.parse(msg.data);
+                  if (data[0] === 'OK' && data[1] === event.id) {
+                    clearTimeout(timer);
+                    ws.close();
+                    resolve(true);
+                  }
+                } catch(e) {}
+              };
+
+              ws.onerror = () => { clearTimeout(timer); resolve(false); };
+            } catch(e) { resolve(false); }
+          });
+        };
+
+        const promises = [];
+        NOSTR_RELAYS.forEach(relayUrl => {
+          promises.push(sendToRelay(relayUrl, signedGamestr));
+          if (signedNote) {
+            promises.push(sendToRelay(relayUrl, signedNote));
+          }
+        });
+
+        const results = await Promise.all(promises);
+        const publishedCount = results.filter(Boolean).length;
+
+        statusEl.textContent = `🎉 Score posted! Live on Gamestr & Vibecamp Olympics leaderboard!`;
+        statusEl.style.color = 'var(--neon-green)';
+        shareBtn.textContent = '✅ Score Broadcasted!';
+      } catch (err) {
+        statusEl.textContent = '❌ Signing cancelled or failed.';
+        statusEl.style.color = 'var(--neon-red)';
+        shareBtn.disabled = false;
+      }
+    }
+
+    // --- Web Audio Sound Synthesizer ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioCtx();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.15) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function soundEatSat() {
+      playTone(587.33, 'triangle', 0.08, 0.2);
+      setTimeout(() => playTone(880, 'sine', 0.12, 0.2), 60);
+    }
+
+    function soundSlowMo() {
+      playTone(880, 'sine', 0.08, 0.2);
+      setTimeout(() => playTone(659, 'sine', 0.1, 0.2), 70);
+      setTimeout(() => playTone(440, 'sine', 0.16, 0.2), 150);
+    }
+
+    function soundHalving() {
+      [523.25, 659.25, 783.99].forEach((f, i) => {
+        setTimeout(() => playTone(f, 'sine', 0.12, 0.22), i * 65);
+      });
+    }
+
+    function soundGameOver() {
+      playTone(300, 'sawtooth', 0.2, 0.3);
+      setTimeout(() => playTone(220, 'sawtooth', 0.25, 0.3), 150);
+      setTimeout(() => playTone(140, 'sawtooth', 0.4, 0.35), 300);
+    }
+
+    function soundZap() {
+      playTone(523.25, 'sine', 0.1, 0.2); // C5
+      setTimeout(() => playTone(659.25, 'sine', 0.1, 0.2), 80); // E5
+      setTimeout(() => playTone(783.99, 'sine', 0.1, 0.2), 160); // G5
+      setTimeout(() => playTone(1046.50, 'triangle', 0.3, 0.3), 240); // C6
+    }
+
+    // --- Leaderboard, Nostr & Zap Elements ---
+    const playerNameInput = document.getElementById('player-name');
+    const leaderboardListEl = document.getElementById('leaderboard-list');
+    const nostrConnectBtn = document.getElementById('nostr-connect-btn');
+    const shareNostrBtn = document.getElementById('share-nostr-btn');
+    const zapCreatorBtn = document.getElementById('zap-creator-btn');
+    const inputContainer = document.getElementById('input-container');
+
+    // Zap Modal Elements
+    const zapModal = document.getElementById('zap-modal');
+    const closeZapModalBtn = document.getElementById('close-zap-modal');
+    const zapQrImg = document.getElementById('zap-qr-img');
+    const zapInvoiceText = document.getElementById('zap-invoice-text');
+    const copyInvoiceBtn = document.getElementById('copy-invoice-btn');
+    const openWalletBtn = document.getElementById('open-wallet-btn');
+
+    const CREATOR_LIGHTNING_ADDRESS = 'innocent-worm-65@rizful.com';
+    const CREATOR_NOSTR_PUBKEY = '65549ef63eda7785b26c3e49e45b73ef93eaf905907b1bd04b518d51171f2210';
+
+    function showZapModal(pr, sats) {
+      zapInvoiceText.value = pr;
+      openWalletBtn.href = `lightning:${pr}`;
+      zapQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(pr.toUpperCase())}&size=200x200&color=f7931a&bgcolor=121824`;
+      zapModal.classList.remove('hidden');
+    }
+
+    function closeZapModal() {
+      zapModal.classList.add('hidden');
+    }
+
+    closeZapModalBtn.addEventListener('click', closeZapModal);
+    zapModal.addEventListener('click', (e) => {
+      if (e.target === zapModal) closeZapModal();
+    });
+
+    copyInvoiceBtn.addEventListener('click', () => {
+      if (!zapInvoiceText.value) return;
+      navigator.clipboard.writeText(zapInvoiceText.value).then(() => {
+        copyInvoiceBtn.textContent = '✅ Copied!';
+        setTimeout(() => { copyInvoiceBtn.textContent = '📋 Copy'; }, 2000);
+      });
+    });
+
+    async function zapCreator(sats = 21) {
+      const statusEl = document.getElementById('nostr-status');
+      try {
+        statusEl.textContent = `⚡ Preparing 21 Sat zap for Vitali...`;
+        statusEl.style.color = 'var(--btc-orange)';
+        zapCreatorBtn.disabled = true;
+
+        const [name, domain] = CREATOR_LIGHTNING_ADDRESS.split('@');
+        const lnurlpUrl = `https://${domain}/.well-known/lnurlp/${name}`;
+        const res = await fetch(lnurlpUrl);
+        const meta = await res.json();
+        if (meta.status === 'ERROR') throw new Error(meta.reason || 'LNURL error');
+
+        const amountMsat = sats * 1000;
+        let callbackUrl = `${meta.callback}${meta.callback.includes('?') ? '&' : '?'}amount=${amountMsat}`;
+
+        // Attempt NIP-57 Zap Request (Kind 9734) if Nostr extension is present
+        if (window.nostr && meta.allowsNostr) {
+          try {
+            const pubkey = userPubkeyHex || await window.nostr.getPublicKey();
+            const zapReq = {
+              kind: 9734,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: [
+                ['p', CREATOR_NOSTR_PUBKEY],
+                ['relays', ...NOSTR_RELAYS],
+                ['amount', String(amountMsat)]
+              ],
+              content: `⚡ 21 Sats Zap for Satoshi Snake creator!`,
+              pubkey: pubkey
+            };
+            const signedZapReq = await window.nostr.signEvent(zapReq);
+            callbackUrl += `&nostr=${encodeURIComponent(JSON.stringify(signedZapReq))}`;
+          } catch(e) {
+            callbackUrl += `&comment=${encodeURIComponent('SatoshiSnake')}`;
+          }
+        } else {
+          callbackUrl += `&comment=${encodeURIComponent('SatoshiSnake')}`;
+        }
+
+        const invRes = await fetch(callbackUrl);
+        const invData = await invRes.json();
+        if (!invData.pr) throw new Error(invData.reason || 'No invoice returned');
+        const pr = invData.pr;
+
+        // Try WebLN (1-click payment)
+        if (window.webln) {
+          try {
+            statusEl.textContent = `⚡ Prompting WebLN wallet for ${sats} Sats...`;
+            await window.webln.enable();
+            await window.webln.sendPayment(pr);
+            statusEl.textContent = `🎉 Zapped ${sats} Sats to Vitali! Thank you! ⚡`;
+            statusEl.style.color = 'var(--neon-green)';
+            soundZap();
+            zapCreatorBtn.innerHTML = '✅ ZAPPED 21 SATS!';
+            return;
+          } catch (weblnErr) {
+            console.log('WebLN prompt cancelled or failed, falling back to QR modal', weblnErr);
+          }
+        }
+
+        // Fallback: Open QR Modal
+        statusEl.textContent = `⚡ Scan QR or copy invoice to pay 21 Sats!`;
+        statusEl.style.color = 'var(--neon-cyan)';
+        showZapModal(pr, sats);
+
+      } catch (err) {
+        statusEl.textContent = `❌ Zap error: ${err.message || 'Failed'}`;
+        statusEl.style.color = 'var(--neon-red)';
+      } finally {
+        zapCreatorBtn.disabled = false;
+      }
+    }
+
+    let currentPlayerName = localStorage.getItem('satoshi_player_name') || '';
+    playerNameInput.value = currentPlayerName;
+
+    function getLeaderboard() {
+      try {
+        const data = localStorage.getItem('satoshi_leaderboard');
+        return data ? JSON.parse(data) : [
+          { name: 'Vitali', score: 85 },
+          { name: 'Satoshi', score: 50 },
+          { name: 'Hal', score: 35 }
+        ];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveLeaderboardEntry(name, newScore) {
+      if (newScore <= 0) return;
+      let scores = getLeaderboard();
+      const displayName = name.trim() || 'Anon';
+      scores.push({ name: displayName, score: newScore, date: Date.now() });
+      scores.sort((a, b) => b.score - a.score);
+      scores = scores.slice(0, 10);
+      localStorage.setItem('satoshi_leaderboard', JSON.stringify(scores));
+      renderLeaderboard();
+    }
+
+    function renderLeaderboard() {
+      const scores = getLeaderboard();
+      leaderboardListEl.innerHTML = '';
+      if (scores.length === 0) {
+        leaderboardListEl.innerHTML = '<li class="leaderboard-item" style="color:var(--muted); justify-content:center;">No high scores yet!</li>';
+        return;
+      }
+      scores.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = `leaderboard-item rank-${index + 1}`;
+        li.innerHTML = `
+          <div class="leaderboard-player">
+            <span class="leaderboard-rank">#${index + 1}</span>
+            <span>${item.name}</span>
+          </div>
+          <span class="leaderboard-score">${item.score} Sats</span>
+        `;
+        leaderboardListEl.appendChild(li);
+      });
+    }
+
+    renderLeaderboard();
+
+    // --- Game Logic ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score-display');
+    const highDisplay = document.getElementById('high-display');
+    const statusBar = document.getElementById('status-bar');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlayDesc = document.getElementById('overlay-desc');
+    const startBtn = document.getElementById('start-btn');
+
+    const GRID_SIZE = 20;
+    const TILE_COUNT = canvas.width / GRID_SIZE;
+
+    let snake = [];
+    let dir = { x: 1, y: 0 };
+    let inputQueue = [];
+    let food = { x: 10, y: 10, type: 'sat' };
+    let score = 0;
+    let highScore = localStorage.getItem('satoshi_snake_high') || 0;
+    highDisplay.textContent = highScore;
+
+    let isRunning = false;
+    let gameLoopTimeout = null;
+    
+    let baseSpeed = 220;
+    let currentSpeed = baseSpeed;
+    let slowMoActiveUntil = 0;
+    let particles = [];
+
+    function resetGame() {
+      snake = [
+        { x: 6, y: 10 },
+        { x: 5, y: 10 },
+        { x: 4, y: 10 }
+      ];
+      dir = { x: 1, y: 0 };
+      inputQueue = [];
+      score = 0;
+      baseSpeed = 220;
+      currentSpeed = baseSpeed;
+      slowMoActiveUntil = 0;
+      particles = [];
+      scoreDisplay.textContent = score;
+      statusBar.textContent = '';
+      spawnFood();
+    }
+
+    function spawnFood() {
+      let valid = false;
+      let attempts = 0;
+      while (!valid && attempts < 100) {
+        attempts++;
+        food.x = Math.floor(Math.random() * (TILE_COUNT - 2)) + 1;
+        food.y = Math.floor(Math.random() * (TILE_COUNT - 2)) + 1;
+        valid = !snake.some(segment => segment.x === food.x && segment.y === food.y);
+      }
+
+      if (!valid) {
+        food.x = Math.floor(Math.random() * TILE_COUNT);
+        food.y = Math.floor(Math.random() * TILE_COUNT);
+      }
+
+      const rand = Math.random();
+      if (rand < 0.25) {
+        food.type = 'slow';
+      } else if (rand < 0.50) {
+        food.type = 'block';
+      } else {
+        food.type = 'sat';
+      }
+    }
+
+    function addParticles(x, y, color, count = 10) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: x * GRID_SIZE + GRID_SIZE / 2,
+          y: y * GRID_SIZE + GRID_SIZE / 2,
+          vx: (Math.random() - 0.5) * 5,
+          vy: (Math.random() - 0.5) * 5,
+          color: color,
+          alpha: 1.0,
+          size: Math.random() * 3 + 2
+        });
+      }
+    }
+
+    function update() {
+      if (!isRunning) return;
+
+      if (inputQueue.length > 0) {
+        dir = inputQueue.shift();
+      }
+
+      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+      if (head.x < 0 || head.x >= TILE_COUNT || head.y < 0 || head.y >= TILE_COUNT) {
+        return gameOver('MEMPOOL REJECTED (HIT WALL)');
+      }
+
+      if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+        return gameOver('BLOCK REORG (BIT YOURSELF)');
+      }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        if (food.type === 'sat') {
+          score += 5;
+          soundEatSat();
+          addParticles(food.x, food.y, '#f7931a', 8);
+        } else if (food.type === 'slow') {
+          score += 5;
+          slowMoActiveUntil = Date.now() + 7000;
+          soundSlowMo();
+          addParticles(food.x, food.y, '#00f0ff', 16);
+        } else if (food.type === 'block') {
+          score += 15;
+          soundHalving();
+          addParticles(food.x, food.y, '#00ff88', 16);
+        }
+
+        scoreDisplay.textContent = score;
+        if (score > highScore) {
+          highScore = score;
+          highDisplay.textContent = highScore;
+          localStorage.setItem('satoshi_snake_high', highScore);
+        }
+
+        baseSpeed = Math.max(105, 220 - Math.floor(score / 20) * 6);
+        spawnFood();
+      } else {
+        snake.pop();
+      }
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.04;
+      });
+      particles = particles.filter(p => p.alpha > 0);
+
+      const isSlowMo = Date.now() < slowMoActiveUntil;
+      if (isSlowMo) {
+        const remainingSec = Math.ceil((slowMoActiveUntil - Date.now()) / 1000);
+        statusBar.textContent = `❄️ TIME-LOCK ACTIVE: SLOW-MO (${remainingSec}s)`;
+        statusBar.style.color = 'var(--neon-cyan)';
+        currentSpeed = Math.floor(baseSpeed * 1.55);
+      } else {
+        statusBar.textContent = '';
+        currentSpeed = baseSpeed;
+      }
+
+      gameLoopTimeout = setTimeout(step, currentSpeed);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= canvas.width; i += GRID_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+      }
+
+      particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      const fx = food.x * GRID_SIZE + GRID_SIZE / 2;
+      const fy = food.y * GRID_SIZE + GRID_SIZE / 2;
+
+      ctx.save();
+      if (food.type === 'sat') {
+        ctx.shadowColor = '#f7931a';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#f7931a';
+        ctx.beginPath();
+        ctx.arc(fx, fy, GRID_SIZE / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('₿', fx, fy);
+      } else if (food.type === 'slow') {
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('❄️', fx, fy);
+      } else if (food.type === 'block') {
+        ctx.shadowColor = '#00ff88';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(food.x * GRID_SIZE + 2, food.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4);
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⛏️', fx, fy);
+      }
+      ctx.restore();
+
+      const isSlowMo = Date.now() < slowMoActiveUntil;
+      snake.forEach((segment, index) => {
+        const sx = segment.x * GRID_SIZE;
+        const sy = segment.y * GRID_SIZE;
+        const isHead = index === 0;
+
+        ctx.save();
+        if (isHead) {
+          ctx.fillStyle = isSlowMo ? '#00f0ff' : '#f7931a';
+          ctx.shadowColor = isSlowMo ? '#00f0ff' : '#f7931a';
+          ctx.shadowBlur = 14;
+          ctx.fillRect(sx + 1, sy + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+
+          ctx.fillStyle = '#000';
+          const eyeSize = 3;
+          let e1 = { x: sx + 5, y: sy + 5 };
+          let e2 = { x: sx + 12, y: sy + 5 };
+          if (dir.x === 1) { e1 = { x: sx + 13, y: sy + 4 }; e2 = { x: sx + 13, y: sy + 12 }; }
+          if (dir.x === -1) { e1 = { x: sx + 4, y: sy + 4 }; e2 = { x: sx + 4, y: sy + 12 }; }
+          if (dir.y === 1) { e1 = { x: sx + 4, y: sy + 13 }; e2 = { x: sx + 12, y: sy + 13 }; }
+          if (dir.y === -1) { e1 = { x: sx + 4, y: sy + 4 }; e2 = { x: sx + 12, y: sy + 4 }; }
+          ctx.fillRect(e1.x, e1.y, eyeSize, eyeSize);
+          ctx.fillRect(e2.x, e2.y, eyeSize, eyeSize);
+        } else {
+          const alpha = Math.max(0.3, 1 - index / snake.length * 0.7);
+          ctx.fillStyle = isSlowMo 
+            ? `rgba(0, 240, 255, ${alpha})`
+            : `rgba(255, 170, 51, ${alpha})`;
+          ctx.fillRect(sx + 2, sy + 2, GRID_SIZE - 4, GRID_SIZE - 4);
+        }
+        ctx.restore();
+      });
+    }
+
+    function step() {
+      update();
+      draw();
+    }
+
+    function startGame() {
+      const enteredName = playerNameInput.value.trim();
+      currentPlayerName = enteredName || 'Anon';
+      localStorage.setItem('satoshi_player_name', enteredName);
+
+      document.getElementById('nostr-status').textContent = '';
+      shareNostrBtn.style.display = 'none';
+      zapCreatorBtn.style.display = 'none';
+      closeZapModal();
+
+      initAudio();
+      resetGame();
+      isRunning = true;
+      overlay.classList.add('hidden');
+      if (gameLoopTimeout) clearTimeout(gameLoopTimeout);
+      step();
+    }
+
+    function gameOver(reason) {
+      isRunning = false;
+      soundGameOver();
+      statusBar.textContent = '';
+      
+      saveLeaderboardEntry(currentPlayerName, score);
+
+      overlayTitle.className = 'game-over-title';
+      overlayTitle.textContent = '500: NETWORK FORK';
+      overlayDesc.innerHTML = `${reason}<br><br><strong>${currentPlayerName}'s Stack:</strong> <span style="color:#f7931a">${score} Sats</span>`;
+      startBtn.innerHTML = '🔄 MINE AGAIN';
+      
+      // Reveal the secondary Nostr broadcast and Zap buttons only when game is over
+      shareNostrBtn.style.display = 'flex';
+      shareNostrBtn.disabled = false;
+      shareNostrBtn.innerHTML = '🟣 Broadcast to Nostr';
+      shareNostrBtn.onclick = () => broadcastScoreToNostr(score);
+
+      zapCreatorBtn.style.display = 'flex';
+      zapCreatorBtn.disabled = false;
+      zapCreatorBtn.innerHTML = '⚡ Zap Creator (21 Sats)';
+      zapCreatorBtn.onclick = () => zapCreator(21);
+
+      overlay.classList.remove('hidden');
+    }
+
+    function queueDirection(newX, newY) {
+      const last = inputQueue.length > 0 ? inputQueue[inputQueue.length - 1] : dir;
+      if (last.x + newX === 0 && last.y + newY === 0) return;
+      if (last.x === newX && last.y === newY) return;
+
+      if (inputQueue.length < 2) {
+        inputQueue.push({ x: newX, y: newY });
+      }
+    }
+
+    // --- Input Controls ---
+    function handleKey(e) {
+      if (document.activeElement === playerNameInput) {
+        if (e.code === 'Enter') {
+          playerNameInput.blur();
+          startGame();
+        }
+        return;
+      }
+
+      if (!isRunning && (e.code === 'Space' || e.code === 'Enter')) {
+        startGame();
+        return;
+      }
+
+      switch (e.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+          queueDirection(0, -1);
+          e.preventDefault();
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          queueDirection(0, 1);
+          e.preventDefault();
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+          queueDirection(-1, 0);
+          e.preventDefault();
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          queueDirection(1, 0);
+          e.preventDefault();
+          break;
+      }
+    }
+
+    window.addEventListener('keydown', handleKey);
+    startBtn.addEventListener('click', startGame);
+    nostrConnectBtn.addEventListener('click', connectNostr);
+
+    // Mobile buttons
+    document.getElementById('btn-up').addEventListener('touchstart', (e) => { e.preventDefault(); queueDirection(0, -1); });
+    document.getElementById('btn-down').addEventListener('touchstart', (e) => { e.preventDefault(); queueDirection(0, 1); });
+    document.getElementById('btn-left').addEventListener('touchstart', (e) => { e.preventDefault(); queueDirection(-1, 0); });
+    document.getElementById('btn-right').addEventListener('touchstart', (e) => { e.preventDefault(); queueDirection(1, 0); });
+
+    document.getElementById('btn-up').addEventListener('click', () => queueDirection(0, -1));
+    document.getElementById('btn-down').addEventListener('click', () => queueDirection(0, 1));
+    document.getElementById('btn-left').addEventListener('click', () => queueDirection(-1, 0));
+    document.getElementById('btn-right').addEventListener('click', () => queueDirection(1, 0));
+
+    // Auto-resolve stored Nostr profile if available
+    if (userPubkeyHex) {
+      fetchNostrProfile(userPubkeyHex).then(profile => {
+        if (profile) {
+          if (profile.nip05) {
+            playerNameInput.value = profile.nip05;
+            localStorage.setItem('satoshi_player_name', profile.nip05);
+          } else if (profile.name || profile.display_name) {
+            const name = profile.name || profile.display_name;
+            playerNameInput.value = name;
+            localStorage.setItem('satoshi_player_name', name);
+          }
+        }
+      }).catch(() => {});
+    }
+
+    // Initial draw
+    draw();
+  </script>
+</body>
+</html>
