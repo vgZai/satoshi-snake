@@ -1,0 +1,33 @@
+{
+  "name": "Vitali",
+  "foldername": "vitali",
+  "bio": "Corporate finance",
+  "whatTheyDo": "Corporate finance",
+  "projectIdea": "Satoshi Snake \u26a1 \u2014 Cyberpunk arcade snake game built with canvas, procedural audio, Bitcoin sats, Lightning boosts, and halving blocks.",
+  "projectStatus": "shipped",
+  "additionalInfo": "AI experience mostly centered on following AI/LLM discourse online.",
+  "custom": {},
+  "nostr": {
+    "npub": "npub1v42faa37mfmctvnv8ey7gkmna7f747g9jpa3h5zt2xx4z9clyggqypj0la",
+    "pubkey": "65549ef63eda7785b26c3e49e45b73ef93eaf905907b1bd04b518d51171f2210",
+    "profile": {
+      "name": "VG",
+      "about": "",
+      "picture": "https://blossom.primal.net/fb29399e3aacabdb30beb5cfe6ccc6b451ae1e60a9daf5576d9940892f7e91c2.jpg"
+    }
+  },
+  "photoUrl": "/x/hackers/vitali/avatar.jpg",
+  "avatarUrl": "/x/hackers/vitali/avatar.jpg",
+  "photo": "/x/hackers/vitali/avatar.jpg",
+  "photoUrls": [
+    "/x/hackers/vitali/avatar.jpg"
+  ],
+  "siteUrl": "https://vgzai.github.io/satoshi-snake/",
+  "gameUrl": "https://vgzai.github.io/satoshi-snake/",
+  "gameTitle": "Satoshi Snake",
+  "gameCategory": "Arcade",
+  "gameDescription": "Satoshi Snake \u2014 cyberpunk snake game: stack Bitcoin blocks, grab Time-Lock Freeze and Mini-Halving power-ups to survive longer.",
+  "gameVersion": "v1.1.0",
+  "npub": "npub1v42faa37mfmctvnv8ey7gkmna7f747g9jpa3h5zt2xx4z9clyggqypj0la",
+  "thumbnailUrl": "/x/hackers/vitali/thumbnail.png"
+}
