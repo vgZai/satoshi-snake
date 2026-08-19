@@ -813,16 +813,21 @@
         const handle = playerNameInput.value.trim() || 'Anon';
         const gameUrl = 'https://vgzai.github.io/satoshi-snake/';
         const nowSec = Math.floor(Date.now() / 1000);
+        const sessionD = `satoshisnake-${pubkey.slice(0, 8)}-${nowSec}`;
 
-        // 1. Kind 30762 (Gamestr Score Event - for the Olympics Leaderboard & Scores Feed)
+        // 1. Kind 30762 (Gamestr Score Event - Fully compliant with NIP-33 / Gamestr spec)
         const gamestrEvent = {
           kind: 30762,
           created_at: nowSec,
           tags: [
-            ['d', 'satoshisnake'],
-            ['game', 'Satoshi Snake'],
+            ['d', sessionD],
+            ['game', 'satoshisnake'],
+            ['title', 'Satoshi Snake'],
             ['score', String(finalScore)],
             ['unit', 'sats'],
+            ['state', 'completed'],
+            ['p', pubkey],
+            ['player', handle],
             ['t', 'bitcoin-vibecamp-olympics-2026'],
             ['t', 'bitcoin-vibecamp'],
             ['t', 'vibecamp'],
@@ -1100,8 +1105,8 @@
         'REQ', subId,
         {
           kinds: [30762],
-          '#d': ['satoshisnake'],
-          limit: 100
+          '#t': ['satoshisnake', 'bitcoin-vibecamp-olympics-2026'],
+          limit: 150
         }
       ]);
 
@@ -1148,15 +1153,22 @@
           // Group by player key (pubkey or name)
           const playerBest = new Map();
           uniqueEvents.forEach(ev => {
+            const gameTag = (ev.tags || []).find(t => t[0] === 'game' || t[0] === 'd');
+            const gameVal = (gameTag ? gameTag[1] : '').toLowerCase();
+            const hasSnakeTag = (ev.tags || []).some(t => t[0] === 't' && t[1]?.toLowerCase() === 'satoshisnake');
+            if (!gameVal.includes('satoshisnake') && !gameVal.includes('satoshi snake') && !hasSnakeTag) {
+              return;
+            }
+
             const scoreTag = (ev.tags || []).find(t => t[0] === 'score');
             const scoreVal = scoreTag ? parseInt(scoreTag[1], 10) : 0;
             if (isNaN(scoreVal) || scoreVal <= 0) return;
 
             // Resolve name
             let name = 'Anon';
-            const nameTag = (ev.tags || []).find(t => t[0] === 'player' || t[0] === 'name' || t[0] === 'username');
-            if (nameTag && nameTag[1]) {
-              name = nameTag[1];
+            const playerTag = (ev.tags || []).find(t => t[0] === 'player' || t[0] === 'name' || t[0] === 'username');
+            if (playerTag && playerTag[1]) {
+              name = playerTag[1];
             } else {
               const match = (ev.content || '').match(/Player:\s*([^\n\r]+)/i);
               if (match && match[1]) {
@@ -1166,14 +1178,15 @@
               }
             }
 
-            const playerKey = ev.pubkey || name.toLowerCase();
+            const playerPub = (ev.tags || []).find(t => t[0] === 'p')?.[1] || ev.pubkey;
+            const playerKey = playerPub || name.toLowerCase();
             const existing = playerBest.get(playerKey);
             if (!existing || scoreVal > existing.score) {
               playerBest.set(playerKey, {
                 name: name,
                 score: scoreVal,
                 date: ev.created_at ? ev.created_at * 1000 : Date.now(),
-                pubkey: ev.pubkey,
+                pubkey: playerPub,
                 fromNostr: true
               });
             }
