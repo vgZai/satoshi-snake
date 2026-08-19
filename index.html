@@ -903,6 +903,8 @@
         statusEl.textContent = `🎉 Score posted! Live on Gamestr & Vibecamp Olympics leaderboard!`;
         statusEl.style.color = 'var(--neon-green)';
         shareBtn.textContent = '✅ Score Broadcasted!';
+        // Refresh dynamic Nostr leaderboard
+        fetchNostrLeaderboard();
       } catch (err) {
         statusEl.textContent = '❌ Signing cancelled or failed.';
         statusEl.style.color = 'var(--neon-red)';
@@ -1086,10 +1088,127 @@
       }
     }
 
+    // --- Dynamic Nostr Relay Leaderboard Fetcher ---
+    let nostrScoresCache = [];
+    let isFetchingNostrLeaderboard = false;
+
+    async function fetchNostrLeaderboard() {
+      if (isFetchingNostrLeaderboard) return;
+      isFetchingNostrLeaderboard = true;
+      const subId = 'snake_lb_' + Math.random().toString(36).substring(2, 8);
+      const reqMsg = JSON.stringify([
+        'REQ', subId,
+        {
+          kinds: [30762],
+          '#d': ['satoshisnake'],
+          limit: 100
+        }
+      ]);
+
+      const relayPromises = NOSTR_RELAYS.map(relayUrl => {
+        return new Promise(resolve => {
+          try {
+            const ws = new WebSocket(relayUrl);
+            const events = [];
+            const timer = setTimeout(() => {
+              try { ws.close(); } catch(e){}
+              resolve(events);
+            }, 3500);
+
+            ws.onopen = () => ws.send(reqMsg);
+            ws.onmessage = (msg) => {
+              try {
+                const data = JSON.parse(msg.data);
+                if (data[0] === 'EVENT' && data[1] === subId && data[2]?.kind === 30762) {
+                  events.push(data[2]);
+                } else if (data[0] === 'EOSE') {
+                  clearTimeout(timer);
+                  try { ws.send(JSON.stringify(['CLOSE', subId])); ws.close(); } catch(e){}
+                  resolve(events);
+                }
+              } catch(e) {}
+            };
+            ws.onerror = () => { clearTimeout(timer); resolve(events); };
+          } catch(e) { resolve([]); }
+        });
+      });
+
+      try {
+        const nestedEvents = await Promise.all(relayPromises);
+        const allEvents = nestedEvents.flat();
+        if (allEvents.length > 0) {
+          // Process events: dedup by id, aggregate best score per player
+          const uniqueEvents = new Map();
+          allEvents.forEach(ev => {
+            if (ev && ev.id && !uniqueEvents.has(ev.id)) {
+              uniqueEvents.set(ev.id, ev);
+            }
+          });
+
+          // Group by player key (pubkey or name)
+          const playerBest = new Map();
+          uniqueEvents.forEach(ev => {
+            const scoreTag = (ev.tags || []).find(t => t[0] === 'score');
+            const scoreVal = scoreTag ? parseInt(scoreTag[1], 10) : 0;
+            if (isNaN(scoreVal) || scoreVal <= 0) return;
+
+            // Resolve name
+            let name = 'Anon';
+            const nameTag = (ev.tags || []).find(t => t[0] === 'player' || t[0] === 'name' || t[0] === 'username');
+            if (nameTag && nameTag[1]) {
+              name = nameTag[1];
+            } else {
+              const match = (ev.content || '').match(/Player:\s*([^\n\r]+)/i);
+              if (match && match[1]) {
+                name = match[1].trim();
+              } else if (ev.pubkey) {
+                name = shortenPubkey(ev.pubkey);
+              }
+            }
+
+            const playerKey = ev.pubkey || name.toLowerCase();
+            const existing = playerBest.get(playerKey);
+            if (!existing || scoreVal > existing.score) {
+              playerBest.set(playerKey, {
+                name: name,
+                score: scoreVal,
+                date: ev.created_at ? ev.created_at * 1000 : Date.now(),
+                pubkey: ev.pubkey,
+                fromNostr: true
+              });
+            }
+          });
+
+          const nostrScores = Array.from(playerBest.values());
+          nostrScores.sort((a, b) => b.score - a.score);
+          nostrScoresCache = nostrScores.slice(0, 10);
+          localStorage.setItem('satoshi_nostr_scores_cache', JSON.stringify(nostrScoresCache));
+          renderLeaderboard();
+        }
+      } catch (e) {
+        console.warn('Could not fetch Nostr leaderboard:', e);
+      } finally {
+        isFetchingNostrLeaderboard = false;
+      }
+    }
+
     let currentPlayerName = localStorage.getItem('satoshi_player_name') || '';
     playerNameInput.value = currentPlayerName;
 
     function getLeaderboard() {
+      // 1. Try in-memory Nostr cache
+      if (nostrScoresCache && nostrScoresCache.length > 0) {
+        return nostrScoresCache;
+      }
+      // 2. Try cached Nostr scores in localStorage
+      try {
+        const cachedNostr = localStorage.getItem('satoshi_nostr_scores_cache');
+        if (cachedNostr) {
+          const parsed = JSON.parse(cachedNostr);
+          if (parsed && parsed.length > 0) return parsed;
+        }
+      } catch(e) {}
+      // 3. Fall back to local scores or initial seed
       try {
         const data = localStorage.getItem('satoshi_leaderboard');
         return data ? JSON.parse(data) : [
@@ -1127,6 +1246,7 @@
           <div class="leaderboard-player">
             <span class="leaderboard-rank">#${index + 1}</span>
             <span>${item.name}</span>
+            ${item.fromNostr ? '<span style="font-size:0.65rem; color:var(--neon-purple); margin-left:4px;" title="Verified on Nostr">⚡</span>' : ''}
           </div>
           <span class="leaderboard-score">${item.score} Sats</span>
         `;
@@ -1135,6 +1255,7 @@
     }
 
     renderLeaderboard();
+    fetchNostrLeaderboard();
 
     // --- Game Logic ---
     const canvas = document.getElementById('gameCanvas');
