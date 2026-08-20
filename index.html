@@ -335,6 +335,28 @@
       transform: scale(1.03);
     }
 
+    .btn-exit-olympics {
+      background: rgba(255, 42, 95, 0.15);
+      border: 1px solid rgba(255, 42, 95, 0.4);
+      color: #ff99ab;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-exit-olympics:hover {
+      background: rgba(255, 42, 95, 0.3);
+      color: #fff;
+      border-color: rgba(255, 42, 95, 0.7);
+    }
+
     .zap-modal {
       position: fixed;
       inset: 0;
@@ -618,6 +640,7 @@
     <header>
       <div class="title-group">
         <h1>₿ SATOSHI SNAKE</h1>
+        <button id="exit-olympics-btn" class="btn-exit-olympics" style="display:none;" title="Exit back to Vibecamp Olympics">← Exit to Olympics</button>
       </div>
       <div class="stats">
         <div class="stat-box">
@@ -704,7 +727,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.4.0)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.5.0)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -712,12 +735,11 @@
   <script>
     // --- Nostr Protocol Relays & Helpers ---
     const NOSTR_RELAYS = [
-      'wss://relay.primal.net',
       'wss://nos.lol',
+      'wss://relay.primal.net',
       'wss://relay.nostr.net',
-      'wss://relay.damus.io',
-      'wss://main.relay.gamestr.io',
-      'wss://test.relay.gamestr.io'
+      'wss://nostr.mom',
+      'wss://main.relay.gamestr.io'
     ];
 
     let userPubkeyHex = localStorage.getItem('satoshi_nostr_pubkey') || '';
@@ -905,22 +927,30 @@
         }
 
         const handle = playerNameInput.value.trim() || 'Anon';
-        const gameUrl = 'https://vgzai.github.io/satoshi-snake/';
+        const gameUrl = CANONICAL_PLAY_URL;
         const nowSec = Math.floor(Date.now() / 1000);
-        const sessionD = `satoshisnake-${pubkey.slice(0, 8)}-${nowSec}`;
+        const runId = Math.random().toString(36).substring(2, 10);
+        const npubVal = NT ? NT.nip19.npubEncode(pubkey) : (olympicsNpub || `npub...${pubkey.slice(-4)}`);
+
+        // d-tag format: GAME_ID:PLAYER_PUBKEY:SESSION_ID:RUN_ID
+        const dTagValue = isOlympicsMode && olympicsSessionId 
+          ? `satoshisnake:${pubkey}:${olympicsSessionId}:${runId}`
+          : `satoshisnake:${pubkey}:${pubkey.slice(0, 8)}-${nowSec}:${runId}`;
 
         const gamestrTags = [
-          ['d', sessionD],
+          ['d', dTagValue],
           ['game', 'satoshisnake'],
-          ['title', 'Satoshi Snake'],
           ['score', String(finalScore)],
-          ['unit', 'sats'],
-          ['state', 'completed'],
           ['p', pubkey],
-          ['player', handle],
+          ['npub', npubVal],
           ['name', handle],
+          ['player', handle],
           ['username', handle],
+          ['title', 'Satoshi Snake'],
+          ['unit', 'sats'],
+          ['state', 'active'],
           ['t', 'Vibecamp'],
+          ['t', 'VibecampOlympics'],
           ['t', 'bitcoin-vibecamp-olympics-2026'],
           ['t', 'bitcoin-vibecamp'],
           ['t', 'vibecamp'],
@@ -1012,14 +1042,31 @@
           }
         });
 
-        await Promise.all(promises);
+        const relayResults = await Promise.all(promises);
+        const atLeastOneSuccess = relayResults.some(r => r === true);
 
-        if (statusEl) {
-          statusEl.textContent = `🎉 Score posted live to Gamestr & Vibecamp Olympics leaderboard!`;
-          statusEl.style.color = 'var(--neon-green)';
-          setTimeout(() => { if (statusEl.textContent.includes('Score posted')) statusEl.textContent = ''; }, 4500);
+        // Record in local vibecamp_olympics_session_v1 if available
+        recordOlympicsLocalCompletion(finalScore, signedGamestr.id);
+
+        if (atLeastOneSuccess) {
+          if (statusEl) {
+            statusEl.textContent = `🎉 Score posted live to Gamestr & Vibecamp Olympics leaderboard!`;
+            statusEl.style.color = 'var(--neon-green)';
+            setTimeout(() => { if (statusEl.textContent.includes('Score posted')) statusEl.textContent = ''; }, 4500);
+          }
+          if (shareBtn) shareBtn.textContent = '✅ Score Broadcasted!';
+        } else {
+          if (statusEl) {
+            statusEl.innerHTML = `⚠️ Relays unreachable. <button id="retry-broadcast-btn" class="nostr-btn" style="padding:2px 8px; font-size:0.75rem; margin-left:4px;">Retry</button>`;
+            statusEl.style.color = 'var(--neon-red)';
+            const retryBtn = document.getElementById('retry-broadcast-btn');
+            if (retryBtn) retryBtn.onclick = () => broadcastScoreToNostr(finalScore, false);
+          }
+          if (shareBtn) {
+            shareBtn.disabled = false;
+            shareBtn.textContent = '🔄 Retry Broadcast';
+          }
         }
-        if (shareBtn) shareBtn.textContent = '✅ Score Broadcasted!';
         // Refresh dynamic Nostr leaderboard
         fetchNostrLeaderboard();
       } catch (err) {
@@ -1097,20 +1144,85 @@
     const nostrConnectBtn = document.getElementById('nostr-connect-btn');
     const shareNostrBtn = document.getElementById('share-nostr-btn');
     const returnOlympicsBtn = document.getElementById('return-olympics-btn');
+    const exitOlympicsBtn = document.getElementById('exit-olympics-btn');
     const zapCreatorBtn = document.getElementById('zap-creator-btn');
     const inputContainer = document.getElementById('input-container');
 
     // --- Bitcoin Vibecamp Olympics Passport Context ---
+    const CANONICAL_PLAY_URL = 'https://vgzai.github.io/satoshi-snake/';
+    const OLYMPICS_STORAGE_KEY = 'vibecamp_olympics_session_v1';
     const urlParams = new URLSearchParams(window.location.search);
     const isOlympicsMode = urlParams.get('olympics') === '1';
     const olympicsSessionId = urlParams.get('olympicsSession') || '';
     const olympicsNpub = urlParams.get('olympicsNpub') || '';
     const olympicsPlayerName = urlParams.get('olympicsName') || '';
+    const olympicsReturnTo = urlParams.get('returnTo') || '/x/?view=passport';
     let lastPublishedGamestrEventId = null;
 
-    if (isOlympicsMode && olympicsPlayerName) {
-      playerNameInput.value = olympicsPlayerName;
-      localStorage.setItem('satoshi_player_name', olympicsPlayerName);
+    // Helpers to safely read/merge local vibecamp_olympics_session_v1 if present on origin
+    function getOlympicsStorageSession() {
+      try {
+        const raw = localStorage.getItem(OLYMPICS_STORAGE_KEY);
+        if (!raw) return null;
+        const session = JSON.parse(raw);
+        if (!session || !session.sessionId || !session.name || !session.pubkey) return null;
+        return session;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function recordOlympicsLocalCompletion(scoreVal, eventIdVal) {
+      try {
+        const raw = localStorage.getItem(OLYMPICS_STORAGE_KEY);
+        if (!raw) return;
+        const session = JSON.parse(raw);
+        if (!session || !session.sessionId) return;
+        session.completed = session.completed || {};
+        session.scores = session.scores || {};
+        session.completed[CANONICAL_PLAY_URL] = {
+          completedAt: new Date().toISOString(),
+          eventId: eventIdVal || null,
+          gameId: 'satoshisnake'
+        };
+        session.scores[CANONICAL_PLAY_URL] = Number(scoreVal);
+        session.updatedAt = new Date().toISOString();
+        localStorage.setItem(OLYMPICS_STORAGE_KEY, JSON.stringify(session));
+      } catch (e) {
+        console.warn('Could not update local olympics storage session:', e);
+      }
+    }
+
+    function getOlympicsExitUrl() {
+      if (olympicsReturnTo.startsWith('http://') || olympicsReturnTo.startsWith('https://')) {
+        return olympicsReturnTo;
+      }
+      return `https://bitcoinvibe.camp${olympicsReturnTo.startsWith('/') ? '' : '/'}${olympicsReturnTo}`;
+    }
+
+    function getOlympicsCallbackUrl(scoreVal, eventIdVal) {
+      const baseReturn = getOlympicsExitUrl();
+      const url = new URL(baseReturn, 'https://bitcoinvibe.camp');
+      if (eventIdVal && olympicsSessionId) {
+        url.searchParams.set('olympicsComplete', '1');
+        url.searchParams.set('session', olympicsSessionId);
+        url.searchParams.set('game', 'satoshisnake');
+        url.searchParams.set('event', eventIdVal);
+      }
+      return url.toString();
+    }
+
+    if (isOlympicsMode) {
+      if (exitOlympicsBtn) {
+        exitOlympicsBtn.style.display = 'inline-flex';
+        exitOlympicsBtn.onclick = () => {
+          window.location.href = getOlympicsExitUrl();
+        };
+      }
+      if (olympicsPlayerName) {
+        playerNameInput.value = olympicsPlayerName;
+        localStorage.setItem('satoshi_player_name', olympicsPlayerName);
+      }
     }
 
     // Zap Modal Elements
@@ -1701,11 +1813,7 @@
       if (isOlympicsMode && returnOlympicsBtn) {
         returnOlympicsBtn.style.display = 'flex';
         returnOlympicsBtn.onclick = () => {
-          let targetUrl = 'https://bitcoinvibe.camp/x/?view=passport';
-          if (score > 0 && lastPublishedGamestrEventId && olympicsSessionId) {
-            targetUrl = `https://bitcoinvibe.camp/x/?view=passport&olympicsComplete=1&session=${encodeURIComponent(olympicsSessionId)}&game=satoshisnake&event=${encodeURIComponent(lastPublishedGamestrEventId)}`;
-          }
-          window.location.href = targetUrl;
+          window.location.href = getOlympicsCallbackUrl(score, lastPublishedGamestrEventId);
         };
       }
 
