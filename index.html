@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Satoshi Snake ⚡ Bitcoin Vibe Camp</title>
+  <!-- nostr-tools for client-side signing & disposable guest keypairs -->
+  <script src="https://unpkg.com/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
   <style>
     :root {
       --bg: #0b0e14;
@@ -678,7 +680,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong></span> • 
+      <span>Built by <strong>Vitali</strong> (v1.2.0)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -694,6 +696,27 @@
     ];
 
     let userPubkeyHex = localStorage.getItem('satoshi_nostr_pubkey') || '';
+
+    // Helpers to manage disposable guest keypairs for casual/mobile players
+    function getOrCreateGuestKeypair() {
+      try {
+        if (typeof NostrTools === 'undefined') return null;
+        let skHex = localStorage.getItem('satoshi_guest_privkey');
+        let sk;
+        if (skHex && skHex.length === 64) {
+          sk = NostrTools.hexToBytes(skHex);
+        } else {
+          sk = NostrTools.generateSecretKey();
+          localStorage.setItem('satoshi_guest_privkey', NostrTools.bytesToHex(sk));
+        }
+        const pk = NostrTools.getPublicKey(sk);
+        localStorage.setItem('satoshi_guest_pubkey', pk);
+        return { sk, pk };
+      } catch (e) {
+        console.warn('Could not initialize guest keypair:', e);
+        return null;
+      }
+    }
 
     // Convert hex to bech32 npub shorthand for UI display
     function shortenPubkey(hex) {
@@ -792,23 +815,49 @@
     }
 
     // Broadcast Score Events (Kind 30762 Gamestr Score + Kind 1 Note) to Nostr Relays
-    async function broadcastScoreToNostr(finalScore) {
+    // Works with NIP-07 (if connected) OR automatically signs via disposable in-browser guest keypair!
+    async function broadcastScoreToNostr(finalScore, isAuto = false) {
+      if (finalScore <= 0) return;
       const statusEl = document.getElementById('nostr-status');
       const shareBtn = document.getElementById('share-nostr-btn');
 
-      if (!window.nostr) {
-        statusEl.textContent = '⚠️ Install a Nostr extension (Alby/nos2x) to post!';
-        statusEl.style.color = 'var(--neon-red)';
-        return;
-      }
-
       try {
-        shareBtn.disabled = true;
-        statusEl.textContent = '⏳ Preparing and signing Nostr event...';
-        statusEl.style.color = 'var(--neon-cyan)';
+        if (!isAuto && shareBtn) shareBtn.disabled = true;
 
-        const pubkey = userPubkeyHex || await window.nostr.getPublicKey();
-        userPubkeyHex = pubkey;
+        let pubkey = userPubkeyHex;
+        let isGuest = false;
+        let guestSk = null;
+
+        // Check if NIP-07 extension is connected
+        if (!pubkey && window.nostr) {
+          try {
+            pubkey = await window.nostr.getPublicKey();
+            userPubkeyHex = pubkey;
+          } catch(e) {}
+        }
+
+        // If no NIP-07 signer is active, seamlessly fall back to disposable guest keypair
+        if (!pubkey) {
+          const guestKp = getOrCreateGuestKeypair();
+          if (guestKp) {
+            pubkey = guestKp.pk;
+            guestSk = guestKp.sk;
+            isGuest = true;
+          }
+        }
+
+        if (!pubkey) {
+          if (!isAuto) {
+            statusEl.textContent = '⚠️ Nostr signer unavailable.';
+            statusEl.style.color = 'var(--neon-red)';
+          }
+          return;
+        }
+
+        if (statusEl) {
+          statusEl.textContent = isGuest ? '⚡ Syncing score with global leaderboard...' : '⏳ Preparing Nostr event...';
+          statusEl.style.color = 'var(--neon-cyan)';
+        }
 
         const handle = playerNameInput.value.trim() || 'Anon';
         const gameUrl = 'https://vgzai.github.io/satoshi-snake/';
@@ -816,7 +865,7 @@
         const sessionD = `satoshisnake-${pubkey.slice(0, 8)}-${nowSec}`;
 
         // 1. Kind 30762 (Gamestr Score Event - Fully compliant with NIP-33 / Gamestr spec)
-        const gamestrEvent = {
+        const gamestrEventTemplate = {
           kind: 30762,
           created_at: nowSec,
           tags: [
@@ -840,7 +889,7 @@
 
         // 2. Kind 1 (Public Social Note)
         const noteContent = `🐍 Stacked ${finalScore} Sats on Satoshi Snake at Bitcoinvibecamp! ⚡\n\nPlayer: ${handle}\nPlay here: ${gameUrl}\n\n#bitcoinvibecamp #bitcoinvibecampolympics2026 #Prospera #nostr #satoshisnake`;
-        const noteEvent = {
+        const noteEventTemplate = {
           kind: 1,
           created_at: nowSec,
           tags: [
@@ -855,18 +904,23 @@
           pubkey: pubkey
         };
 
-        // Request signatures from NIP-07 extension
-        statusEl.textContent = '⏳ Requesting signature in extension...';
-        const signedGamestr = await window.nostr.signEvent(gamestrEvent);
-        
+        let signedGamestr = null;
         let signedNote = null;
-        try {
-          signedNote = await window.nostr.signEvent(noteEvent);
-        } catch (e) {
-          // If user only approves the first prompt, continue with score
+
+        if (isGuest && guestSk && typeof NostrTools !== 'undefined') {
+          // Direct client-side schnorr signature for guests (instant, zero prompts)
+          signedGamestr = NostrTools.finalizeEvent(gamestrEventTemplate, guestSk);
+          signedNote = NostrTools.finalizeEvent(noteEventTemplate, guestSk);
+        } else if (window.nostr) {
+          // Extension signature
+          if (statusEl) statusEl.textContent = '⏳ Requesting signature in extension...';
+          signedGamestr = await window.nostr.signEvent(gamestrEventTemplate);
+          try {
+            signedNote = await window.nostr.signEvent(noteEventTemplate);
+          } catch(e) {}
         }
 
-        statusEl.textContent = '🚀 Broadcasting score to Gamestr & Nostr relays...';
+        if (!signedGamestr) return;
 
         const sendToRelay = (relayUrl, event) => {
           return new Promise((resolve) => {
@@ -902,18 +956,23 @@
           }
         });
 
-        const results = await Promise.all(promises);
-        const publishedCount = results.filter(Boolean).length;
+        await Promise.all(promises);
 
-        statusEl.textContent = `🎉 Score posted! Live on Gamestr & Vibecamp Olympics leaderboard!`;
-        statusEl.style.color = 'var(--neon-green)';
-        shareBtn.textContent = '✅ Score Broadcasted!';
+        if (statusEl) {
+          statusEl.textContent = `🎉 Score posted live to Gamestr & Vibecamp Olympics leaderboard!`;
+          statusEl.style.color = 'var(--neon-green)';
+          setTimeout(() => { if (statusEl.textContent.includes('Score posted')) statusEl.textContent = ''; }, 4500);
+        }
+        if (shareBtn) shareBtn.textContent = '✅ Score Broadcasted!';
         // Refresh dynamic Nostr leaderboard
         fetchNostrLeaderboard();
       } catch (err) {
-        statusEl.textContent = '❌ Signing cancelled or failed.';
-        statusEl.style.color = 'var(--neon-red)';
-        shareBtn.disabled = false;
+        console.warn('Score broadcast failed:', err);
+        if (statusEl && !isAuto) {
+          statusEl.textContent = '❌ Signing cancelled or failed.';
+          statusEl.style.color = 'var(--neon-red)';
+        }
+        if (shareBtn) shareBtn.disabled = false;
       }
     }
 
@@ -1557,6 +1616,11 @@
       
       saveLeaderboardEntry(currentPlayerName, score);
 
+      // Auto-broadcast score to Nostr & Gamestr relays for every completed run (score > 0)
+      if (score > 0) {
+        broadcastScoreToNostr(score, true);
+      }
+
       overlayTitle.className = 'game-over-title';
       overlayTitle.textContent = '500: NETWORK FORK';
       overlayDesc.innerHTML = `${reason}<br><br><strong>${currentPlayerName}'s Stack:</strong> <span style="color:#f7931a">${score} Sats</span>`;
@@ -1566,7 +1630,7 @@
       shareNostrBtn.style.display = 'flex';
       shareNostrBtn.disabled = false;
       shareNostrBtn.innerHTML = '🟣 Broadcast to Nostr';
-      shareNostrBtn.onclick = () => broadcastScoreToNostr(score);
+      shareNostrBtn.onclick = () => broadcastScoreToNostr(score, false);
 
       zapCreatorBtn.style.display = 'flex';
       zapCreatorBtn.disabled = false;
