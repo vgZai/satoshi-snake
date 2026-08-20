@@ -587,11 +587,11 @@
     .controls {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-      gap: 12px;
+      grid-template-rows: repeat(3, 1fr);
+      gap: 10px;
       width: 100%;
-      max-width: 340px;
-      margin: 10px auto 30px auto;
+      max-width: 320px;
+      margin: 10px auto 16px auto;
     }
 
     .ctrl-btn {
@@ -599,7 +599,7 @@
       border: 1px solid rgba(0, 240, 255, 0.25);
       color: var(--neon-cyan);
       font-size: 1.6rem;
-      height: 64px;
+      height: 60px;
       border-radius: 14px;
       display: flex;
       align-items: center;
@@ -616,8 +616,8 @@
 
     .ctrl-up { grid-column: 2; grid-row: 1; }
     .ctrl-left { grid-column: 1; grid-row: 2; }
-    .ctrl-down { grid-column: 2; grid-row: 2; }
     .ctrl-right { grid-column: 3; grid-row: 2; }
+    .ctrl-down { grid-column: 2; grid-row: 3; }
 
     footer {
       font-size: 0.72rem;
@@ -727,7 +727,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.5.2)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.5.3)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
