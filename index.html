@@ -680,7 +680,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.2.1)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.2.2)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -688,11 +688,12 @@
   <script>
     // --- Nostr Protocol Relays & Helpers ---
     const NOSTR_RELAYS = [
-      'wss://main.relay.gamestr.io',
-      'wss://test.relay.gamestr.io',
-      'wss://relay.damus.io',
       'wss://relay.primal.net',
-      'wss://nos.lol'
+      'wss://nos.lol',
+      'wss://relay.nostr.net',
+      'wss://relay.damus.io',
+      'wss://main.relay.gamestr.io',
+      'wss://test.relay.gamestr.io'
     ];
 
     let userPubkeyHex = localStorage.getItem('satoshi_nostr_pubkey') || '';
@@ -877,13 +878,15 @@
             ['state', 'completed'],
             ['p', pubkey],
             ['player', handle],
+            ['name', handle],
+            ['username', handle],
             ['t', 'bitcoin-vibecamp-olympics-2026'],
             ['t', 'bitcoin-vibecamp'],
             ['t', 'vibecamp'],
             ['t', 'satoshisnake'],
             ['r', gameUrl]
           ],
-          content: `🐍 Stacked ${finalScore} Sats on Satoshi Snake! ⚡ Player: ${handle}`,
+          content: `${handle} scored ${finalScore} on Satoshi Snake! ⚡ (Player: ${handle})`,
           pubkey: pubkey
         };
 
