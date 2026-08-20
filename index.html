@@ -680,7 +680,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.2.2)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.2.3)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -698,19 +698,39 @@
 
     let userPubkeyHex = localStorage.getItem('satoshi_nostr_pubkey') || '';
 
+    // Helpers for Nostr hex / byte conversions
+    function bytesToHex(bytes) {
+      if (!bytes) return '';
+      let hex = '';
+      for (let i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0');
+      }
+      return hex;
+    }
+
+    function hexToBytes(hex) {
+      if (!hex || typeof hex !== 'string') return new Uint8Array(0);
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+      }
+      return bytes;
+    }
+
     // Helpers to manage disposable guest keypairs for casual/mobile players
     function getOrCreateGuestKeypair() {
       try {
-        if (typeof NostrTools === 'undefined') return null;
+        const NT = window.NostrTools || (typeof NostrTools !== 'undefined' ? NostrTools : null);
+        if (!NT) return null;
         let skHex = localStorage.getItem('satoshi_guest_privkey');
         let sk;
         if (skHex && skHex.length === 64) {
-          sk = NostrTools.hexToBytes(skHex);
+          sk = hexToBytes(skHex);
         } else {
-          sk = NostrTools.generateSecretKey();
-          localStorage.setItem('satoshi_guest_privkey', NostrTools.bytesToHex(sk));
+          sk = NT.generateSecretKey();
+          localStorage.setItem('satoshi_guest_privkey', bytesToHex(sk));
         }
-        const pk = NostrTools.getPublicKey(sk);
+        const pk = NT.getPublicKey(sk);
         localStorage.setItem('satoshi_guest_pubkey', pk);
         return { sk, pk };
       } catch (e) {
@@ -909,11 +929,12 @@
 
         let signedGamestr = null;
         let signedNote = null;
+        const NT = window.NostrTools || (typeof NostrTools !== 'undefined' ? NostrTools : null);
 
-        if (isGuest && guestSk && typeof NostrTools !== 'undefined') {
+        if (isGuest && guestSk && NT) {
           // Direct client-side schnorr signature for guests (instant, zero prompts)
-          signedGamestr = NostrTools.finalizeEvent(gamestrEventTemplate, guestSk);
-          signedNote = NostrTools.finalizeEvent(noteEventTemplate, guestSk);
+          signedGamestr = NT.finalizeEvent(gamestrEventTemplate, guestSk);
+          signedNote = NT.finalizeEvent(noteEventTemplate, guestSk);
         } else if (window.nostr) {
           // Extension signature
           if (statusEl) statusEl.textContent = '⏳ Requesting signature in extension...';
