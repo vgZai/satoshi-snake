@@ -727,7 +727,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.5.0)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.5.1)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -887,6 +887,7 @@
       if (finalScore <= 0) return;
       const statusEl = document.getElementById('nostr-status');
       const shareBtn = document.getElementById('share-nostr-btn');
+      const NT = window.NostrTools || (typeof NostrTools !== 'undefined' ? NostrTools : null);
 
       try {
         if (!isAuto && shareBtn) shareBtn.disabled = true;
@@ -895,15 +896,42 @@
         let isGuest = false;
         let guestSk = null;
 
-        // Check if NIP-07 extension is connected
-        if (!pubkey && window.nostr) {
+        // 1. Check if user is an Olympics participant with an ephemeral key
+        let olympicsSecretKey = null;
+        if (isOlympicsMode) {
+          const olympicsSession = getOlympicsStorageSession();
+          if (olympicsSession && olympicsSession.nsec && NT) {
+            try {
+              const decoded = NT.nip19.decode(olympicsSession.nsec);
+              if (decoded && decoded.data) {
+                olympicsSecretKey = decoded.data;
+                pubkey = olympicsSession.pubkey || NT.getPublicKey(olympicsSecretKey);
+                isGuest = true;
+                guestSk = olympicsSecretKey;
+              }
+            } catch(e) {}
+          }
+        }
+
+        // 2. Check if auto-broadcasting for NIP-07 signer without prompting
+        if (isAuto && window.nostr && userPubkeyHex && userPubkeyHex !== localStorage.getItem('satoshi_guest_pubkey')) {
+          // Do not interrupt game over flow with unrequested extension popup on auto-broadcast
+          if (statusEl) {
+            statusEl.textContent = '💡 Click "Broadcast to Nostr" to sign with your extension.';
+            statusEl.style.color = 'var(--neon-cyan)';
+          }
+          return;
+        }
+
+        // 3. Check if NIP-07 extension is connected for manual broadcast
+        if (!pubkey && window.nostr && !isAuto) {
           try {
             pubkey = await window.nostr.getPublicKey();
             userPubkeyHex = pubkey;
           } catch(e) {}
         }
 
-        // If no NIP-07 signer is active, seamlessly fall back to disposable guest keypair
+        // 4. If no NIP-07 signer or Olympics session is active, fall back to disposable guest keypair
         if (!pubkey) {
           const guestKp = getOrCreateGuestKeypair();
           if (guestKp) {
@@ -990,7 +1018,6 @@
 
         let signedGamestr = null;
         let signedNote = null;
-        const NT = window.NostrTools || (typeof NostrTools !== 'undefined' ? NostrTools : null);
 
         if (isGuest && guestSk && NT) {
           // Direct client-side schnorr signature for guests (instant, zero prompts)
@@ -1005,7 +1032,14 @@
           } catch(e) {}
         }
 
-        if (!signedGamestr) return;
+        if (!signedGamestr) {
+          if (statusEl && !isAuto) {
+            statusEl.textContent = '⚠️ Could not sign event.';
+            statusEl.style.color = 'var(--neon-red)';
+          }
+          if (shareBtn) shareBtn.disabled = false;
+          return;
+        }
         lastPublishedGamestrEventId = signedGamestr.id;
 
         const sendToRelay = (relayUrl, event) => {
