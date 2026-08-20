@@ -312,6 +312,29 @@
       transform: scale(1.03);
     }
 
+    .btn-olympics {
+      background: linear-gradient(135deg, #ff5757, #ff2a5f);
+      border: 1px solid #ff7b90;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 9px 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 0 14px rgba(255, 42, 95, 0.5);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+
+    .btn-olympics:hover {
+      background: linear-gradient(135deg, #ff6b6b, #ff4171);
+      box-shadow: 0 0 20px rgba(255, 42, 95, 0.8);
+      transform: scale(1.03);
+    }
+
     .zap-modal {
       position: fixed;
       inset: 0;
@@ -633,6 +656,7 @@
 
         <div class="action-btn-group">
           <button id="start-btn" class="btn">⚡ START MINING</button>
+          <button id="return-olympics-btn" class="btn-olympics" style="display:none;">🏆 Return to Olympics</button>
           <button id="share-nostr-btn" class="btn-secondary" style="display:none;">🟣 Share to Nostr</button>
           <button id="zap-creator-btn" class="btn-zap" style="display:none;">⚡ Zap Creator (21 Sats)</button>
         </div>
@@ -680,7 +704,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.3.2)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.4.0)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -885,27 +909,34 @@
         const nowSec = Math.floor(Date.now() / 1000);
         const sessionD = `satoshisnake-${pubkey.slice(0, 8)}-${nowSec}`;
 
+        const gamestrTags = [
+          ['d', sessionD],
+          ['game', 'satoshisnake'],
+          ['title', 'Satoshi Snake'],
+          ['score', String(finalScore)],
+          ['unit', 'sats'],
+          ['state', 'completed'],
+          ['p', pubkey],
+          ['player', handle],
+          ['name', handle],
+          ['username', handle],
+          ['t', 'Vibecamp'],
+          ['t', 'bitcoin-vibecamp-olympics-2026'],
+          ['t', 'bitcoin-vibecamp'],
+          ['t', 'vibecamp'],
+          ['t', 'satoshisnake'],
+          ['r', gameUrl]
+        ];
+
+        if (isOlympicsMode && olympicsSessionId) {
+          gamestrTags.push(['session', olympicsSessionId]);
+        }
+
         // 1. Kind 30762 (Gamestr Score Event - Fully compliant with NIP-33 / Gamestr spec)
         const gamestrEventTemplate = {
           kind: 30762,
           created_at: nowSec,
-          tags: [
-            ['d', sessionD],
-            ['game', 'satoshisnake'],
-            ['title', 'Satoshi Snake'],
-            ['score', String(finalScore)],
-            ['unit', 'sats'],
-            ['state', 'completed'],
-            ['p', pubkey],
-            ['player', handle],
-            ['name', handle],
-            ['username', handle],
-            ['t', 'bitcoin-vibecamp-olympics-2026'],
-            ['t', 'bitcoin-vibecamp'],
-            ['t', 'vibecamp'],
-            ['t', 'satoshisnake'],
-            ['r', gameUrl]
-          ],
+          tags: gamestrTags,
           content: `${handle} scored ${finalScore} on Satoshi Snake! ⚡ (Player: ${handle})`,
           pubkey: pubkey
         };
@@ -945,6 +976,7 @@
         }
 
         if (!signedGamestr) return;
+        lastPublishedGamestrEventId = signedGamestr.id;
 
         const sendToRelay = (relayUrl, event) => {
           return new Promise((resolve) => {
@@ -1064,8 +1096,22 @@
     const leaderboardListEl = document.getElementById('leaderboard-list');
     const nostrConnectBtn = document.getElementById('nostr-connect-btn');
     const shareNostrBtn = document.getElementById('share-nostr-btn');
+    const returnOlympicsBtn = document.getElementById('return-olympics-btn');
     const zapCreatorBtn = document.getElementById('zap-creator-btn');
     const inputContainer = document.getElementById('input-container');
+
+    // --- Bitcoin Vibecamp Olympics Passport Context ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOlympicsMode = urlParams.get('olympics') === '1';
+    const olympicsSessionId = urlParams.get('olympicsSession') || '';
+    const olympicsNpub = urlParams.get('olympicsNpub') || '';
+    const olympicsPlayerName = urlParams.get('olympicsName') || '';
+    let lastPublishedGamestrEventId = null;
+
+    if (isOlympicsMode && olympicsPlayerName) {
+      playerNameInput.value = olympicsPlayerName;
+      localStorage.setItem('satoshi_player_name', olympicsPlayerName);
+    }
 
     // Zap Modal Elements
     const zapModal = document.getElementById('zap-modal');
@@ -1621,6 +1667,7 @@
       localStorage.setItem('satoshi_player_name', enteredName);
 
       document.getElementById('nostr-status').textContent = '';
+      returnOlympicsBtn.style.display = 'none';
       shareNostrBtn.style.display = 'none';
       zapCreatorBtn.style.display = 'none';
       closeZapModal();
@@ -1650,6 +1697,18 @@
       overlayDesc.innerHTML = `${reason}<br><br><strong>${currentPlayerName}'s Stack:</strong> <span style="color:#f7931a">${score} Sats</span>`;
       startBtn.innerHTML = '🔄 MINE AGAIN';
       
+      // If launched from Bitcoin Vibecamp Olympics Passport, show return button
+      if (isOlympicsMode && returnOlympicsBtn) {
+        returnOlympicsBtn.style.display = 'flex';
+        returnOlympicsBtn.onclick = () => {
+          let targetUrl = 'https://bitcoinvibe.camp/x/?view=passport';
+          if (score > 0 && lastPublishedGamestrEventId && olympicsSessionId) {
+            targetUrl = `https://bitcoinvibe.camp/x/?view=passport&olympicsComplete=1&session=${encodeURIComponent(olympicsSessionId)}&game=satoshisnake&event=${encodeURIComponent(lastPublishedGamestrEventId)}`;
+          }
+          window.location.href = targetUrl;
+        };
+      }
+
       // Reveal secondary action buttons on game over
       // If user has a real NIP-07 extension, give them manual share control; otherwise score is already auto-broadcasted silently
       if (window.nostr && userPubkeyHex && userPubkeyHex !== localStorage.getItem('satoshi_guest_pubkey')) {
@@ -1734,7 +1793,7 @@
     document.getElementById('btn-right').addEventListener('click', () => queueDirection(1, 0));
 
     // Auto-resolve stored Nostr profile if available
-    if (userPubkeyHex) {
+    if (!isOlympicsMode && userPubkeyHex) {
       fetchNostrProfile(userPubkeyHex).then(profile => {
         if (profile) {
           if (profile.nip05) {

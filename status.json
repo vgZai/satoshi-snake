@@ -27,7 +27,7 @@
   "gameTitle": "Satoshi Snake",
   "gameCategory": "Arcade",
   "gameDescription": "Satoshi Snake — cyberpunk snake game: stack Bitcoin blocks, grab Mini-Halving and Time-Lock Freeze power-ups to survive longer.",
-  "gameVersion": "v1.3.2",
+  "gameVersion": "v1.4.0",
   "npub": "npub1v42faa37mfmctvnv8ey7gkmna7f747g9jpa3h5zt2xx4z9clyggqypj0la",
   "thumbnailUrl": "/x/hackers/vitali/thumbnail.png"
 }
