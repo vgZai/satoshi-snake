@@ -727,7 +727,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.5.1)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.5.2)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -881,8 +881,9 @@
       }
     }
 
-    // Broadcast Score Events (Kind 30762 Gamestr Score + Kind 1 Note) to Nostr Relays
-    // Works with NIP-07 (if connected) OR automatically signs via disposable in-browser guest keypair!
+    // Broadcast Score Events (Kind 30762 Gamestr Score + optional Kind 1 Note) to Nostr Relays
+    // Always auto-broadcasts the Gamestr score using an ephemeral/guest keypair or decoded Olympics key,
+    // and lets NIP-07 extension users optionally sign with their own key / post a Kind 1 note to their personal feed!
     async function broadcastScoreToNostr(finalScore, isAuto = false) {
       if (finalScore <= 0) return;
       const statusEl = document.getElementById('nostr-status');
@@ -892,47 +893,34 @@
       try {
         if (!isAuto && shareBtn) shareBtn.disabled = true;
 
-        let pubkey = userPubkeyHex;
+        let pubkey = '';
         let isGuest = false;
         let guestSk = null;
 
         // 1. Check if user is an Olympics participant with an ephemeral key
-        let olympicsSecretKey = null;
         if (isOlympicsMode) {
           const olympicsSession = getOlympicsStorageSession();
           if (olympicsSession && olympicsSession.nsec && NT) {
             try {
               const decoded = NT.nip19.decode(olympicsSession.nsec);
               if (decoded && decoded.data) {
-                olympicsSecretKey = decoded.data;
-                pubkey = olympicsSession.pubkey || NT.getPublicKey(olympicsSecretKey);
+                guestSk = decoded.data;
+                pubkey = olympicsSession.pubkey || NT.getPublicKey(guestSk);
                 isGuest = true;
-                guestSk = olympicsSecretKey;
               }
             } catch(e) {}
           }
         }
 
-        // 2. Check if auto-broadcasting for NIP-07 signer without prompting
-        if (isAuto && window.nostr && userPubkeyHex && userPubkeyHex !== localStorage.getItem('satoshi_guest_pubkey')) {
-          // Do not interrupt game over flow with unrequested extension popup on auto-broadcast
-          if (statusEl) {
-            statusEl.textContent = '💡 Click "Broadcast to Nostr" to sign with your extension.';
-            statusEl.style.color = 'var(--neon-cyan)';
-          }
-          return;
+        // 2. If not an Olympics session, check if manual broadcast by a connected NIP-07 user
+        if (!isAuto && window.nostr && userPubkeyHex && userPubkeyHex !== localStorage.getItem('satoshi_guest_pubkey')) {
+          pubkey = userPubkeyHex;
+          isGuest = false;
         }
 
-        // 3. Check if NIP-07 extension is connected for manual broadcast
-        if (!pubkey && window.nostr && !isAuto) {
-          try {
-            pubkey = await window.nostr.getPublicKey();
-            userPubkeyHex = pubkey;
-          } catch(e) {}
-        }
-
-        // 4. If no NIP-07 signer or Olympics session is active, fall back to disposable guest keypair
-        if (!pubkey) {
+        // 3. For all auto-broadcasts (guests AND NIP-07 users), use the in-browser guest keypair
+        // so EVERY player's score broadcasts immediately to the global leaderboard without extension popups!
+        if (!pubkey || (isAuto && !isGuest)) {
           const guestKp = getOrCreateGuestKeypair();
           if (guestKp) {
             pubkey = guestKp.pk;
@@ -942,7 +930,7 @@
         }
 
         if (!pubkey) {
-          if (!isAuto) {
+          if (!isAuto && statusEl) {
             statusEl.textContent = '⚠️ Nostr signer unavailable.';
             statusEl.style.color = 'var(--neon-red)';
           }
@@ -950,7 +938,7 @@
         }
 
         if (statusEl) {
-          statusEl.textContent = isGuest ? '⚡ Syncing score with global leaderboard...' : '⏳ Preparing Nostr event...';
+          statusEl.textContent = isGuest ? '⚡ Syncing score with global leaderboard...' : '⏳ Requesting signature in extension...';
           statusEl.style.color = 'var(--neon-cyan)';
         }
 
@@ -999,7 +987,7 @@
           pubkey: pubkey
         };
 
-        // 2. Kind 1 (Public Social Note)
+        // 2. Kind 1 (Public Social Note for personal feed on manual broadcast)
         const noteContent = `🐍 Stacked ${finalScore} Sats on Satoshi Snake at Bitcoinvibecamp! ⚡\n\nPlayer: ${handle}\nPlay here: ${gameUrl}\n\n#bitcoinvibecamp #bitcoinvibecampolympics2026 #Prospera #nostr #satoshisnake`;
         const noteEventTemplate = {
           kind: 1,
@@ -1020,11 +1008,13 @@
         let signedNote = null;
 
         if (isGuest && guestSk && NT) {
-          // Direct client-side schnorr signature for guests (instant, zero prompts)
+          // Direct client-side schnorr signature (instant, zero prompts)
           signedGamestr = NT.finalizeEvent(gamestrEventTemplate, guestSk);
-          signedNote = NT.finalizeEvent(noteEventTemplate, guestSk);
+          if (!isAuto) {
+            signedNote = NT.finalizeEvent(noteEventTemplate, guestSk);
+          }
         } else if (window.nostr) {
-          // Extension signature
+          // Explicit user-triggered extension signature
           if (statusEl) statusEl.textContent = '⏳ Requesting signature in extension...';
           signedGamestr = await window.nostr.signEvent(gamestrEventTemplate);
           try {
