@@ -680,7 +680,7 @@
     </div>
 
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.2.0)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.2.1)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
@@ -1626,11 +1626,16 @@
       overlayDesc.innerHTML = `${reason}<br><br><strong>${currentPlayerName}'s Stack:</strong> <span style="color:#f7931a">${score} Sats</span>`;
       startBtn.innerHTML = '🔄 MINE AGAIN';
       
-      // Reveal the secondary Nostr broadcast and Zap buttons only when game is over
-      shareNostrBtn.style.display = 'flex';
-      shareNostrBtn.disabled = false;
-      shareNostrBtn.innerHTML = '🟣 Broadcast to Nostr';
-      shareNostrBtn.onclick = () => broadcastScoreToNostr(score, false);
+      // Reveal secondary action buttons on game over
+      // If user has a real NIP-07 extension, give them manual share control; otherwise score is already auto-broadcasted silently
+      if (window.nostr && userPubkeyHex && userPubkeyHex !== localStorage.getItem('satoshi_guest_pubkey')) {
+        shareNostrBtn.style.display = 'flex';
+        shareNostrBtn.disabled = false;
+        shareNostrBtn.innerHTML = '🟣 Broadcast to Nostr';
+        shareNostrBtn.onclick = () => broadcastScoreToNostr(score, false);
+      } else {
+        shareNostrBtn.style.display = 'none';
+      }
 
       zapCreatorBtn.style.display = 'flex';
       zapCreatorBtn.disabled = false;
