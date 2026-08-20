@@ -543,23 +543,24 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(2, 1fr);
-      gap: 8px;
-      width: 220px;
-      margin-top: 2px;
+      gap: 12px;
+      width: 100%;
+      max-width: 340px;
+      margin: 6px auto;
     }
 
     .ctrl-btn {
       background: var(--card-bg);
       border: 1px solid rgba(0, 240, 255, 0.25);
       color: var(--neon-cyan);
-      font-size: 1.25rem;
-      height: 48px;
-      border-radius: 12px;
+      font-size: 1.6rem;
+      height: 64px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       transition: background 0.1s, transform 0.05s;
     }
 
@@ -594,7 +595,6 @@
     <header>
       <div class="title-group">
         <h1>₿ SATOSHI SNAKE</h1>
-        <p>HACKER @ BITCOIN VIBE CAMP</p>
       </div>
       <div class="stats">
         <div class="stat-box">
@@ -608,13 +608,19 @@
       </div>
     </header>
 
+    <div class="legend">
+      <div class="legend-item">🟡 <span>+5 Sats</span></div>
+      <div class="legend-item">⛏️ <span>Mini-Halving (+15)</span></div>
+      <div class="legend-item">❄️ <span>Time-Lock (Slow-Mo)</span></div>
+    </div>
+
     <div class="canvas-wrapper">
       <canvas id="gameCanvas" width="400" height="400"></canvas>
       
       <!-- Start / Game Over Overlay -->
       <div id="overlay" class="overlay">
         <h2 id="overlay-title" class="start-title">STACK SATS & SURVIVE</h2>
-        <p id="overlay-desc">Guide your node gently, stack Bitcoin blocks, and grab ❄️ Time-Lock Freeze and ⛏️ Mini-Halvings!</p>
+        <p id="overlay-desc">Guide your node gently, stack Bitcoin blocks, and grab ⛏️ Mini-Halvings and ❄️ Time-Lock Freeze!</p>
         
         <div id="input-container" class="player-input-wrap">
           <div class="input-row">
@@ -654,10 +660,12 @@
 
     <div id="status-bar" class="status-indicator"></div>
 
-    <div class="legend">
-      <div class="legend-item">🟡 <span>+5 Sats</span></div>
-      <div class="legend-item">❄️ <span>Time-Lock (Slow-Mo)</span></div>
-      <div class="legend-item">⛏️ <span>Mini-Halving (+15)</span></div>
+    <!-- Mobile Onscreen D-Pad -->
+    <div class="controls">
+      <div class="ctrl-btn ctrl-up" id="btn-up">▲</div>
+      <div class="ctrl-btn ctrl-left" id="btn-left">◀</div>
+      <div class="ctrl-btn ctrl-down" id="btn-down">▼</div>
+      <div class="ctrl-btn ctrl-right" id="btn-right">▶</div>
     </div>
 
     <!-- Leaderboard -->
@@ -671,16 +679,8 @@
       </ul>
     </div>
 
-    <!-- Mobile Onscreen D-Pad -->
-    <div class="controls">
-      <div class="ctrl-btn ctrl-up" id="btn-up">▲</div>
-      <div class="ctrl-btn ctrl-left" id="btn-left">◀</div>
-      <div class="ctrl-btn ctrl-down" id="btn-down">▼</div>
-      <div class="ctrl-btn ctrl-right" id="btn-right">▶</div>
-    </div>
-
     <footer>
-      <span>Built by <strong>Vitali</strong> (v1.2.3)</span> • 
+      <span>Built by <strong>Vitali</strong> (v1.3.0)</span> • 
       <a href="/x/" target="_blank">Bitcoin Vibe Camp /x</a>
     </footer>
   </div>
